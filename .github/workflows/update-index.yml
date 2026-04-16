@@ -1,0 +1,47 @@
+name: Suchindex täglich aktualisieren
+
+on:
+  schedule:
+    # Jeden Tag um 05:00 Uhr UTC (= 06:00 / 07:00 Uhr MESZ/MEZ)
+    # Das offenesdresden-Repo wird gegen 07:00 Uhr aktualisiert
+    - cron: '0 5 * * *'
+  # Auch manuell auslösbar (GitHub → Actions → "Run workflow")
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write   # für gh-pages deploy
+
+    steps:
+      - name: Repository auschecken
+        uses: actions/checkout@v4
+
+      - name: Python einrichten
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: offenesdresden/dresden-ratsinfo klonen (nur neuester Stand)
+        run: |
+          git clone --depth=1 \
+            https://github.com/offenesdresden/dresden-ratsinfo.git \
+            /tmp/dresden-ratsinfo
+          echo "Geklont: $(date)"
+          echo "Meetings: $(ls /tmp/dresden-ratsinfo/meetings/*.json | wc -l)"
+          echo "Vorlagen: $(ls /tmp/dresden-ratsinfo/vorlagen/*.json | wc -l)"
+
+      - name: Suchindex bauen
+        run: |
+          python3 build_index.py
+          echo "Index-Größe: $(du -sh public/search-index.json)"
+          echo "Index-Größe gz: $(du -sh public/search-index.json.gz)"
+
+      - name: Auf GitHub Pages deployen
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./public
+          # Behalte die letzten 3 Deploy-Versionen für Rollback
+          keep_files: false
