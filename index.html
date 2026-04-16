@@ -564,6 +564,12 @@ function runSearch(q) {
     return;
   }
 
+  if (!fuse) {
+    document.getElementById('resultsList').innerHTML =
+      '<div class="state-message"><strong>⏳</strong>Index wird noch geladen – bitte kurz warten.</div>';
+    return;
+  }
+
   // Fuse-Suche
   let raw = fuse.search(q);
 
