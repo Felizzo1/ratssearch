@@ -19,11 +19,14 @@
       --tag-v:    #1e3a5f;  /* Vorlage */
       --tag-a:    #1f3a2a;  /* Antrag */
       --tag-p:    #3b2a1a;  /* Petition */
-      --tag-top:  #2a1f3a;  /* Tagesordnung */
+      --tag-top:  #2a1f3a;  /* Sitzung */
       --tag-anf:  #2a2a1a;  /* Anfrage */
+      --tag-bz:   #2a1c10;  /* Bezirk */
       --green:    #34d399;
       --amber:    #fbbf24;
       --red:      #f87171;
+      --header-h: 76px;
+      --filters-h: 53px;
     }
 
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -144,6 +147,9 @@
       flex-wrap: wrap;
       border-bottom: 1px solid var(--border);
       background: var(--bg);
+      position: sticky;
+      top: var(--header-h);
+      z-index: 99;
     }
     .filter-btn {
       font-family: 'DM Mono', monospace;
@@ -188,10 +194,19 @@
       padding: 20px 16px;
       font-size: 12px;
       overflow-y: auto;
-      max-height: calc(100vh - 120px);
+      max-height: calc(100vh - var(--header-h) - var(--filters-h));
       position: sticky;
-      top: 120px;
+      top: calc(var(--header-h) + var(--filters-h));
       align-self: start;
+    }
+    .sidebar-subsection {
+      font-size: 9px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--border);
+      padding: 10px 0 4px;
+      margin-top: 4px;
+      border-top: 1px solid rgba(42,47,62,.4);
     }
     .sidebar-section { margin-bottom: 24px; }
     .sidebar-title {
@@ -336,6 +351,7 @@
     .tag-antrag   { background: var(--tag-a);   color: #86efac; }
     .tag-petition { background: var(--tag-p);   color: #fdba74; }
     .tag-sitzung  { background: var(--tag-top); color: #c4b5fd; }
+    .tag-bezirk   { background: var(--tag-bz);  color: #fed7aa; }
     .tag-anfrage  { background: var(--tag-anf); color: #fde68a; }
 
     .meta-date    { font-size: 12px; color: var(--muted); }
@@ -411,6 +427,7 @@
   <button class="filter-btn" data-type="antrag">Anträge</button>
   <button class="filter-btn" data-type="petition">Petitionen</button>
   <button class="filter-btn" data-type="anfrage">Anfragen</button>
+  <button class="filter-btn" data-type="bezirk">Bezirke</button>
   <button class="filter-btn" data-type="sitzung">Sitzungen</button>
 </div>
 
@@ -625,6 +642,9 @@ function applyFilters(raw) {
 function categorize(item) {
   if (item.t === 'm') return 'sitzung';
   const pt = (item.pt || '').toLowerCase();
+  const r  = (item.r  || '');
+  if (pt.includes('vorschlagsrecht')) return 'antrag';
+  if (pt.startsWith('vorlage stb') || pt.startsWith('vorlage os') || /^V-[A-Z]/.test(r)) return 'bezirk';
   if (pt.includes('petition')) return 'petition';
   if (pt.includes('anfrage') || pt.startsWith('mündliche') || pt.includes('einwohner')) return 'anfrage';
   if (pt.includes('antrag')) return 'antrag';
@@ -655,6 +675,7 @@ function cardHTML(item, matches) {
     antrag:   ['tag-antrag',   'Antrag'],
     petition: ['tag-petition', 'Petition'],
     anfrage:  ['tag-anfrage',  'Anfrage'],
+    bezirk:   ['tag-bezirk',   'Bezirk'],
     sitzung:  ['tag-sitzung',  'Sitzung'],
   };
   const [tagClass, tagLabel] = tagMap[cat] || ['tag-vorlage','?'];
@@ -765,14 +786,29 @@ function buildFacets(fuseItems) {
       <span class="facet-name">${y}</span><span class="facet-count">${c.toLocaleString('de')}</span>
     </div>`).join('');
 
-  // Gremium-Facetten (alle, nach Häufigkeit)
+  // Gremium-Facetten: Stadtrat oben, dann nach Aktualität, Bezirke als eigene Sektion
   const gremCounts = {};
-  items.forEach(r => (r.g||[]).forEach(g => { if(g) gremCounts[g]=(gremCounts[g]||0)+1; }));
-  const allGrem = Object.entries(gremCounts).sort((a,b) => b[1]-a[1]);
+  const gremLastDate = {};
+  items.forEach(r => (r.g||[]).forEach(g => {
+    if (!g) return;
+    gremCounts[g] = (gremCounts[g]||0) + 1;
+    if (!gremLastDate[g] || (r.d||'') > gremLastDate[g]) gremLastDate[g] = r.d||'';
+  }));
+  const byDate = ([a],[b]) => (gremLastDate[b]||'').localeCompare(gremLastDate[a]||'');
+  const isLocal = g => /stadtbezirksbeirat|ortschaftsrat|ortsbeirat/i.test(g);
+
+  const stadtrat = Object.keys(gremCounts).filter(g => g === 'Stadtrat');
+  const local    = Object.keys(gremCounts).filter(g => g !== 'Stadtrat' && isLocal(g)).sort(byDate);
+  const other    = Object.keys(gremCounts).filter(g => g !== 'Stadtrat' && !isLocal(g)).sort(byDate);
+
+  const facetItem = g => `<div class="facet-item${activeGrem===g?' active':''}" data-gremium="${escHtml(g)}">
+    <span class="facet-name">${escHtml(g)}</span><span class="facet-count">${gremCounts[g].toLocaleString('de')}</span>
+  </div>`;
+
   document.getElementById('gremiumFacets').innerHTML =
-    allGrem.map(([g,c]) => `<div class="facet-item${activeGrem===g?' active':''}" data-gremium="${escHtml(g)}">
-      <span class="facet-name">${escHtml(g)}</span><span class="facet-count">${c.toLocaleString('de')}</span>
-    </div>`).join('');
+    stadtrat.map(facetItem).join('') +
+    (other.length  ? `<div class="sidebar-subsection">Ausschüsse &amp; Beiräte</div>` + other.map(facetItem).join('') : '') +
+    (local.length  ? `<div class="sidebar-subsection">Stadtbezirke &amp; Ortschaften</div>` + local.map(facetItem).join('') : '');
 }
 
 // ── Load more ──
