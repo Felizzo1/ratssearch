@@ -233,7 +233,21 @@
       gap: 16px;
     }
     .results-count { color: var(--accent); }
-    .sort-select { margin-left: auto; }
+    .sort-btns { margin-left: auto; display: flex; align-items: center; gap: 4px; }
+    .sort-label { font-size: 11px; color: var(--muted); margin-right: 4px; }
+    .sort-btn {
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      padding: 3px 8px;
+      border-radius: 4px;
+      border: 1px solid var(--border);
+      background: none;
+      color: var(--muted);
+      cursor: pointer;
+      transition: all .15s;
+    }
+    .sort-btn:hover { border-color: var(--accent); color: var(--text); }
+    .sort-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
 
     /* ── AI answer box ── */
     #aiAnswer {
@@ -411,11 +425,12 @@
     <div class="results-header" id="resultsHeader">
       <span id="resultsCount" class="results-count">–</span>
       <span id="resultsLabel"></span>
-      <select class="filter-select sort-select" id="sortSelect">
-        <option value="date-desc">Neueste zuerst</option>
-        <option value="date-asc">Älteste zuerst</option>
-        <option value="relevance">Relevanz</option>
-      </select>
+      <div class="sort-btns" id="sortBtns">
+        <span class="sort-label">Sortierung:</span>
+        <button class="sort-btn active" data-sort="date-desc">Neueste</button>
+        <button class="sort-btn" data-sort="date-asc">Älteste</button>
+        <button class="sort-btn" data-sort="relevance">Relevanz</button>
+      </div>
     </div>
 
     <div id="aiAnswer">
@@ -651,8 +666,10 @@ function cardHTML(item, matches) {
   const context  = item.sn ? escHtml(item.sn) : '';
   const href     = item.u || '#';
 
+  const refLabel = item.r ? escHtml(item.r) : (item.t === 'a' ? `TOP·${escHtml(item.id)}` : '—');
+
   return `<a class="result-card" href="${href}" target="_blank" rel="noopener">
-    <div class="card-ref">${item.r ? escHtml(item.r) : ''}</div>
+    <div class="card-ref">${refLabel}</div>
     <div class="card-body">
       <div class="card-title">${title}</div>
       <div class="card-meta">
@@ -702,8 +719,12 @@ document.getElementById('filtersBar').addEventListener('click', e => {
   runSearch(document.getElementById('searchInput').value.trim());
 });
 
-document.getElementById('sortSelect').addEventListener('change', function() {
-  activeSort = this.value;
+document.getElementById('sortBtns').addEventListener('click', e => {
+  const btn = e.target.closest('.sort-btn');
+  if (!btn) return;
+  document.querySelectorAll('.sort-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  activeSort = btn.dataset.sort;
   runSearch(document.getElementById('searchInput').value.trim());
 });
 
