@@ -262,27 +262,34 @@
     @keyframes pulse { 0%,100%{opacity:.5} 50%{opacity:1} }
 
     /* ── Result cards ── */
-    #resultsList { padding: 12px 0; }
+    #resultsList { padding: 4px 0; }
 
     .result-card {
-      padding: 14px 24px;
+      padding: 10px 24px;
       border-bottom: 1px solid rgba(42,47,62,.6);
-      display: grid;
-      grid-template-columns: 1fr auto;
-      gap: 8px;
+      display: flex;
+      gap: 20px;
+      align-items: baseline;
       transition: background .1s;
-      cursor: pointer;
       text-decoration: none;
       color: inherit;
     }
     .result-card:hover { background: var(--surface); }
 
-    .card-main {}
+    .card-ref {
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      color: var(--accent);
+      white-space: nowrap;
+      width: 110px;
+      flex-shrink: 0;
+      padding-top: 2px;
+    }
+    .card-body { flex: 1; min-width: 0; }
     .card-title {
       font-size: 14px;
-      font-weight: 500;
+      font-weight: 400;
       color: var(--text);
-      margin-bottom: 4px;
       line-height: 1.4;
     }
     .card-title mark {
@@ -296,7 +303,7 @@
       gap: 8px;
       align-items: center;
       flex-wrap: wrap;
-      margin-top: 6px;
+      margin-top: 4px;
     }
     .tag {
       font-family: 'DM Mono', monospace;
@@ -312,41 +319,8 @@
     .tag-top      { background: var(--tag-top); color: #c4b5fd; }
     .tag-anfrage  { background: var(--tag-anf); color: #fde68a; }
 
-    .meta-ref {
-      font-family: 'DM Mono', monospace;
-      font-size: 11px;
-      color: var(--accent);
-    }
-    .meta-date { font-size: 12px; color: var(--muted); }
+    .meta-date    { font-size: 12px; color: var(--muted); }
     .meta-gremium { font-size: 12px; color: var(--muted); }
-
-    .card-consultations {
-      margin-top: 6px;
-      display: flex;
-      gap: 6px;
-      flex-wrap: wrap;
-    }
-    .consult-pill {
-      font-size: 11px;
-      padding: 2px 7px;
-      border-radius: 10px;
-      border: 1px solid var(--border);
-      color: var(--muted);
-      white-space: nowrap;
-    }
-    .consult-pill.beschliessend { border-color: rgba(52,211,153,.3); color: var(--green); }
-    .consult-pill.beratend      { border-color: rgba(251,191,36,.25); color: var(--amber); }
-
-    .card-link {
-      align-self: start;
-      margin-top: 2px;
-      color: var(--muted);
-      font-size: 12px;
-      white-space: nowrap;
-      opacity: 0;
-      transition: opacity .15s;
-    }
-    .result-card:hover .card-link { opacity: 1; }
 
     /* ── Empty/loading states ── */
     .state-message {
@@ -665,54 +639,29 @@ function cardHTML(item, matches) {
   };
   const [tagClass, tagLabel] = tagMap[cat] || ['tag-vorlage','?'];
 
-  // Highlight-Titel
   let title = escHtml(item.n || '—');
   if (matches) {
     const nm = matches.find(m => m.key === 'n');
     if (nm) title = highlightMatches(item.n || '', nm.indices);
   }
 
-  // Typ-Badge
   const ptLabel = item.pt ? escHtml(item.pt) : tagLabel;
-
-  // Datum
-  const date = item.d ? formatDate(item.d) : '';
-
-  // Gremien
+  const date     = item.d ? formatDate(item.d) : '';
   const gremText = (item.g || []).filter(Boolean).join(' · ');
-
-  // Sitzungskontext (für Tagesordnungspunkte)
-  const sitzung = item.sn ? `<span class="meta-gremium">${escHtml(item.sn)}</span>` : '';
-
-  // Beratungsvorgänge (für Vorlagen)
-  let consultHTML = '';
-  if (item.c && item.c.length) {
-    const pills = item.c.map(c => {
-      const cls = c.role === 'beschließend' ? 'beschliessend'
-                : c.role === 'beratend'     ? 'beratend' : '';
-      return `<a href="${c.url}" target="_blank" class="consult-pill ${cls}"
-                 title="${escHtml(c.role)}" onclick="event.stopPropagation()">
-                ${escHtml(c.gremium)} ${c.date.slice(0,4)}
-              </a>`;
-    }).join('');
-    consultHTML = `<div class="card-consultations">${pills}</div>`;
-  }
-
-  const href = item.u || '#';
+  const context  = item.sn ? escHtml(item.sn) : '';
+  const href     = item.u || '#';
 
   return `<a class="result-card" href="${href}" target="_blank" rel="noopener">
-    <div class="card-main">
+    <div class="card-ref">${item.r ? escHtml(item.r) : ''}</div>
+    <div class="card-body">
       <div class="card-title">${title}</div>
       <div class="card-meta">
-        <span class="tag ${tagClass}">${escHtml(ptLabel)}</span>
-        ${item.r ? `<span class="meta-ref">${escHtml(item.r)}</span>` : ''}
-        ${date    ? `<span class="meta-date">${date}</span>` : ''}
+        <span class="tag ${tagClass}">${ptLabel}</span>
+        ${date     ? `<span class="meta-date">${date}</span>` : ''}
         ${gremText ? `<span class="meta-gremium">${escHtml(gremText)}</span>` : ''}
-        ${sitzung}
+        ${context  ? `<span class="meta-gremium">${context}</span>` : ''}
       </div>
-      ${consultHTML}
     </div>
-    <div class="card-link">↗</div>
   </a>`;
 }
 
