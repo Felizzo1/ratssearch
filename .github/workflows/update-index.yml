@@ -38,6 +38,9 @@ jobs:
           echo "Index-Größe: $(du -sh public/search-index.json)"
           echo "Index-Größe gz: $(du -sh public/search-index.json.gz)"
 
+      - name: index.html nach public/ kopieren
+        run: cp index.html public/index.html
+
       - name: Auf GitHub Pages deployen
         uses: peaceiris/actions-gh-pages@v4
         with:
