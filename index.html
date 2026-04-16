@@ -752,6 +752,41 @@ document.getElementById('yearFilter').addEventListener('change', function() {
   runSearch(document.getElementById('searchInput').value.trim());
 });
 
+document.getElementById('typeFacets').addEventListener('click', e => {
+  const item = e.target.closest('.facet-item');
+  if (!item) return;
+  const type = item.dataset.ftype;
+  activeType = activeType === type ? 'all' : type;
+  document.querySelectorAll('.filter-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.type === activeType);
+  });
+  document.querySelectorAll('#typeFacets .facet-item').forEach(el =>
+    el.classList.toggle('active', el.dataset.ftype === activeType));
+  runSearch(document.getElementById('searchInput').value.trim());
+});
+
+document.getElementById('yearFacets').addEventListener('click', e => {
+  const item = e.target.closest('.facet-item');
+  if (!item) return;
+  const year = item.dataset.year;
+  activeYear = activeYear === year ? '' : year;
+  document.getElementById('yearFilter').value = activeYear;
+  document.querySelectorAll('#yearFacets .facet-item').forEach(el =>
+    el.classList.toggle('active', el.dataset.year === activeYear));
+  runSearch(document.getElementById('searchInput').value.trim());
+});
+
+document.getElementById('gremiumFacets').addEventListener('click', e => {
+  const item = e.target.closest('.facet-item');
+  if (!item) return;
+  const grem = item.dataset.gremium;
+  activeGrem = activeGrem === grem ? '' : grem;
+  document.getElementById('gremiumFilter').value = activeGrem;
+  document.querySelectorAll('#gremiumFacets .facet-item').forEach(el =>
+    el.classList.toggle('active', el.dataset.gremium === activeGrem));
+  runSearch(document.getElementById('searchInput').value.trim());
+});
+
 document.getElementById('gremiumFilter').addEventListener('change', function() {
   activeGrem = this.value;
   runSearch(document.getElementById('searchInput').value.trim());
@@ -783,19 +818,20 @@ function buildFacets(fuseItems) {
   const typeCounts = { vorlage:0, antrag:0, petition:0, anfrage:0, top:0 };
   items.forEach(r => { typeCounts[categorize(r)] = (typeCounts[categorize(r)]||0)+1; });
   const typeEl = document.getElementById('typeFacets');
+  const typeLabels = {vorlage:'Vorlage',antrag:'Antrag',petition:'Petition',anfrage:'Anfrage',top:'TO-Punkt'};
   typeEl.innerHTML = Object.entries(typeCounts)
-    .map(([k,v]) => `<div class="facet-item" data-ftype="${k}">
-      <span class="facet-name">${{vorlage:'Vorlage',antrag:'Antrag',petition:'Petition',anfrage:'Anfrage',top:'TO-Punkt'}[k]}</span>
-      <span class="facet-count">${v}</span>
+    .map(([k,v]) => `<div class="facet-item${activeType===k?' active':''}" data-ftype="${k}">
+      <span class="facet-name">${typeLabels[k]}</span>
+      <span class="facet-count">${v.toLocaleString('de')}</span>
     </div>`).join('');
 
   // Jahr-Facetten (Top 8)
   const yearCounts = {};
   items.forEach(r => { if(r.d) yearCounts[r.d.slice(0,4)] = (yearCounts[r.d.slice(0,4)]||0)+1; });
-  const topYears = Object.entries(yearCounts).sort((a,b)=>b[1]-a[1]).slice(0,8);
+  const topYears = Object.entries(yearCounts).sort((a,b)=>b[0]-a[0]).slice(0,8);
   document.getElementById('yearFacets').innerHTML =
-    topYears.map(([y,c]) => `<div class="facet-item">
-      <span class="facet-name">${y}</span><span class="facet-count">${c}</span>
+    topYears.map(([y,c]) => `<div class="facet-item${activeYear===y?' active':''}" data-year="${y}">
+      <span class="facet-name">${y}</span><span class="facet-count">${c.toLocaleString('de')}</span>
     </div>`).join('');
 
   // Gremium-Facetten (Top 8)
@@ -803,8 +839,8 @@ function buildFacets(fuseItems) {
   items.forEach(r => (r.g||[]).forEach(g => { if(g) gremCounts[g]=(gremCounts[g]||0)+1; }));
   const topGrem = Object.entries(gremCounts).sort((a,b)=>b[1]-a[1]).slice(0,8);
   document.getElementById('gremiumFacets').innerHTML =
-    topGrem.map(([g,c]) => `<div class="facet-item">
-      <span class="facet-name">${escHtml(g)}</span><span class="facet-count">${c}</span>
+    topGrem.map(([g,c]) => `<div class="facet-item${activeGrem===g?' active':''}" data-gremium="${escHtml(g)}">
+      <span class="facet-name">${escHtml(g)}</span><span class="facet-count">${c.toLocaleString('de')}</span>
     </div>`).join('');
 }
 
