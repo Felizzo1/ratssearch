@@ -187,6 +187,11 @@
       border-right: 1px solid var(--border);
       padding: 20px 16px;
       font-size: 12px;
+      overflow-y: auto;
+      max-height: calc(100vh - 120px);
+      position: sticky;
+      top: 120px;
+      align-self: start;
     }
     .sidebar-section { margin-bottom: 24px; }
     .sidebar-title {
@@ -751,21 +756,21 @@ document.getElementById('gremiumFacets').addEventListener('click', e => {
 function buildFacets(fuseItems) {
   const items = fuseItems.length ? fuseItems.map(f=>f.item) : [];
 
-  // Jahr-Facetten (Top 8)
+  // Jahr-Facetten (alle, neueste zuerst)
   const yearCounts = {};
   items.forEach(r => { if(r.d) yearCounts[r.d.slice(0,4)] = (yearCounts[r.d.slice(0,4)]||0)+1; });
-  const topYears = Object.entries(yearCounts).sort((a,b)=>b[0]-a[0]).slice(0,8);
+  const allYears = Object.entries(yearCounts).sort((a,b) => b[0].localeCompare(a[0]));
   document.getElementById('yearFacets').innerHTML =
-    topYears.map(([y,c]) => `<div class="facet-item${activeYear===y?' active':''}" data-year="${y}">
+    allYears.map(([y,c]) => `<div class="facet-item${activeYear===y?' active':''}" data-year="${y}">
       <span class="facet-name">${y}</span><span class="facet-count">${c.toLocaleString('de')}</span>
     </div>`).join('');
 
-  // Gremium-Facetten (Top 8)
+  // Gremium-Facetten (alle, nach Häufigkeit)
   const gremCounts = {};
   items.forEach(r => (r.g||[]).forEach(g => { if(g) gremCounts[g]=(gremCounts[g]||0)+1; }));
-  const topGrem = Object.entries(gremCounts).sort((a,b)=>b[1]-a[1]).slice(0,8);
+  const allGrem = Object.entries(gremCounts).sort((a,b) => b[1]-a[1]);
   document.getElementById('gremiumFacets').innerHTML =
-    topGrem.map(([g,c]) => `<div class="facet-item${activeGrem===g?' active':''}" data-gremium="${escHtml(g)}">
+    allGrem.map(([g,c]) => `<div class="facet-item${activeGrem===g?' active':''}" data-gremium="${escHtml(g)}">
       <span class="facet-name">${escHtml(g)}</span><span class="facet-count">${c.toLocaleString('de')}</span>
     </div>`).join('');
 }
