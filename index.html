@@ -233,6 +233,7 @@
       gap: 16px;
     }
     .results-count { color: var(--accent); }
+    .sort-select { margin-left: auto; }
 
     /* ── AI answer box ── */
     #aiAnswer {
@@ -418,20 +419,10 @@
   <button class="filter-btn" data-type="petition">Petitionen</button>
   <button class="filter-btn" data-type="anfrage">Anfragen</button>
   <button class="filter-btn" data-type="top">Tagesordnung</button>
-  <select class="filter-select" id="yearFilter">
-    <option value="">Alle Jahre</option>
-  </select>
-  <select class="filter-select" id="gremiumFilter">
-    <option value="">Alle Gremien</option>
-  </select>
 </div>
 
 <div class="layout">
   <aside>
-    <div class="sidebar-section">
-      <div class="sidebar-title">Dokumenttyp</div>
-      <div id="typeFacets"></div>
-    </div>
     <div class="sidebar-section">
       <div class="sidebar-title">Jahr</div>
       <div id="yearFacets"></div>
@@ -446,6 +437,11 @@
     <div class="results-header" id="resultsHeader">
       <span id="resultsCount" class="results-count">–</span>
       <span id="resultsLabel"></span>
+      <select class="filter-select sort-select" id="sortSelect">
+        <option value="date-desc">Neueste zuerst</option>
+        <option value="date-asc">Älteste zuerst</option>
+        <option value="relevance">Relevanz</option>
+      </select>
     </div>
 
     <div id="aiAnswer">
@@ -493,6 +489,15 @@ let page       = 0;
 let activeType = 'all';
 let activeYear = '';
 let activeGrem = '';
+let activeSort = 'date-desc';
+
+function sortResults(items) {
+  if (activeSort === 'date-desc')
+    return [...items].sort((a, b) => (b.item.d || '').localeCompare(a.item.d || ''));
+  if (activeSort === 'date-asc')
+    return [...items].sort((a, b) => (a.item.d || '').localeCompare(b.item.d || ''));
+  return items;
+}
 
 // ═══════════════════════════════════════════════════════════════
 //  BOOT
@@ -516,9 +521,8 @@ async function boot() {
       ignoreLocation: true,
       useExtendedSearch: true,
     });
-    buildYearSelect();
-    buildGremiumSelect();
-    const allWrapped = allData.map(item => ({item, matches: [], score: 1}));
+    let allWrapped = allData.map(item => ({item, matches: [], score: 1}));
+    allWrapped = sortResults(allWrapped);
     buildFacets(allWrapped);
     results = allWrapped;
     renderResults(allWrapped.slice(0, CONFIG.PAGE_SIZE));
@@ -561,6 +565,7 @@ function runSearch(q) {
   if (!q) {
     let allWrapped = allData.map(item => ({item, matches: [], score: 1}));
     allWrapped = applyFilters(allWrapped);
+    allWrapped = sortResults(allWrapped);
     results = allWrapped;
     renderResults(allWrapped.slice(0, CONFIG.PAGE_SIZE));
     buildFacets(allWrapped);
@@ -582,8 +587,9 @@ function runSearch(q) {
   // Fuse-Suche
   let raw = fuse.search(q);
 
-  // Filter
+  // Filter + Sortierung
   raw = applyFilters(raw);
+  raw = sortResults(raw);
   results = raw;
 
   renderResults(raw.slice(0, CONFIG.PAGE_SIZE));
@@ -747,21 +753,8 @@ document.getElementById('filtersBar').addEventListener('click', e => {
   runSearch(document.getElementById('searchInput').value.trim());
 });
 
-document.getElementById('yearFilter').addEventListener('change', function() {
-  activeYear = this.value;
-  runSearch(document.getElementById('searchInput').value.trim());
-});
-
-document.getElementById('typeFacets').addEventListener('click', e => {
-  const item = e.target.closest('.facet-item');
-  if (!item) return;
-  const type = item.dataset.ftype;
-  activeType = activeType === type ? 'all' : type;
-  document.querySelectorAll('.filter-btn').forEach(b => {
-    b.classList.toggle('active', b.dataset.type === activeType);
-  });
-  document.querySelectorAll('#typeFacets .facet-item').forEach(el =>
-    el.classList.toggle('active', el.dataset.ftype === activeType));
+document.getElementById('sortSelect').addEventListener('change', function() {
+  activeSort = this.value;
   runSearch(document.getElementById('searchInput').value.trim());
 });
 
@@ -770,7 +763,6 @@ document.getElementById('yearFacets').addEventListener('click', e => {
   if (!item) return;
   const year = item.dataset.year;
   activeYear = activeYear === year ? '' : year;
-  document.getElementById('yearFilter').value = activeYear;
   document.querySelectorAll('#yearFacets .facet-item').forEach(el =>
     el.classList.toggle('active', el.dataset.year === activeYear));
   runSearch(document.getElementById('searchInput').value.trim());
@@ -781,49 +773,13 @@ document.getElementById('gremiumFacets').addEventListener('click', e => {
   if (!item) return;
   const grem = item.dataset.gremium;
   activeGrem = activeGrem === grem ? '' : grem;
-  document.getElementById('gremiumFilter').value = activeGrem;
   document.querySelectorAll('#gremiumFacets .facet-item').forEach(el =>
     el.classList.toggle('active', el.dataset.gremium === activeGrem));
   runSearch(document.getElementById('searchInput').value.trim());
 });
 
-document.getElementById('gremiumFilter').addEventListener('change', function() {
-  activeGrem = this.value;
-  runSearch(document.getElementById('searchInput').value.trim());
-});
-
-function buildYearSelect() {
-  const years = new Set();
-  allData.forEach(r => { if (r.d && r.d.length >= 4) years.add(r.d.slice(0,4)); });
-  const sel = document.getElementById('yearFilter');
-  Array.from(years).sort().reverse().forEach(y => {
-    sel.insertAdjacentHTML('beforeend', `<option value="${y}">${y}</option>`);
-  });
-}
-
-function buildGremiumSelect() {
-  const gremCounts = {};
-  allData.forEach(r => (r.g || []).forEach(g => { if(g) gremCounts[g] = (gremCounts[g]||0)+1; }));
-  const top = Object.entries(gremCounts).sort((a,b)=>b[1]-a[1]).slice(0,40);
-  const sel = document.getElementById('gremiumFilter');
-  top.forEach(([g,c]) => {
-    sel.insertAdjacentHTML('beforeend', `<option value="${escHtml(g)}">${escHtml(g)} (${c})</option>`);
-  });
-}
-
 function buildFacets(fuseItems) {
   const items = fuseItems.length ? fuseItems.map(f=>f.item) : [];
-
-  // Typ-Facetten
-  const typeCounts = { vorlage:0, antrag:0, petition:0, anfrage:0, top:0 };
-  items.forEach(r => { typeCounts[categorize(r)] = (typeCounts[categorize(r)]||0)+1; });
-  const typeEl = document.getElementById('typeFacets');
-  const typeLabels = {vorlage:'Vorlage',antrag:'Antrag',petition:'Petition',anfrage:'Anfrage',top:'TO-Punkt'};
-  typeEl.innerHTML = Object.entries(typeCounts)
-    .map(([k,v]) => `<div class="facet-item${activeType===k?' active':''}" data-ftype="${k}">
-      <span class="facet-name">${typeLabels[k]}</span>
-      <span class="facet-count">${v.toLocaleString('de')}</span>
-    </div>`).join('');
 
   // Jahr-Facetten (Top 8)
   const yearCounts = {};
