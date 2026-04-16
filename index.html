@@ -559,14 +559,15 @@ document.getElementById('clearBtn').addEventListener('click', () => {
 function runSearch(q) {
   page = 0;
   if (!q) {
-    const allWrapped = allData.map(item => ({item, matches: [], score: 1}));
+    let allWrapped = allData.map(item => ({item, matches: [], score: 1}));
+    allWrapped = applyFilters(allWrapped);
     results = allWrapped;
     renderResults(allWrapped.slice(0, CONFIG.PAGE_SIZE));
     buildFacets(allWrapped);
     page = 1;
     document.getElementById('loadMore').style.display =
-      allData.length > CONFIG.PAGE_SIZE ? 'inline-block' : 'none';
-    document.getElementById('resultsCount').textContent = allData.length.toLocaleString('de');
+      allWrapped.length > CONFIG.PAGE_SIZE ? 'inline-block' : 'none';
+    document.getElementById('resultsCount').textContent = allWrapped.length.toLocaleString('de');
     document.getElementById('resultsLabel').textContent = 'Einträge gesamt';
     document.getElementById('aiAnswer').style.display = 'none';
     return;
