@@ -330,7 +330,7 @@
     .tag-vorlage  { background: var(--tag-v);   color: #93c5fd; }
     .tag-antrag   { background: var(--tag-a);   color: #86efac; }
     .tag-petition { background: var(--tag-p);   color: #fdba74; }
-    .tag-top      { background: var(--tag-top); color: #c4b5fd; }
+    .tag-sitzung  { background: var(--tag-top); color: #c4b5fd; }
     .tag-anfrage  { background: var(--tag-anf); color: #fde68a; }
 
     .meta-date    { font-size: 12px; color: var(--muted); }
@@ -406,7 +406,7 @@
   <button class="filter-btn" data-type="antrag">Anträge</button>
   <button class="filter-btn" data-type="petition">Petitionen</button>
   <button class="filter-btn" data-type="anfrage">Anfragen</button>
-  <button class="filter-btn" data-type="top">Tagesordnung</button>
+  <button class="filter-btn" data-type="sitzung">Sitzungen</button>
 </div>
 
 <div class="layout">
@@ -618,7 +618,7 @@ function applyFilters(raw) {
 }
 
 function categorize(item) {
-  if (item.t === 'a') return 'top';
+  if (item.t === 'm') return 'sitzung';
   const pt = (item.pt || '').toLowerCase();
   if (pt.includes('petition')) return 'petition';
   if (pt.includes('anfrage') || pt.startsWith('mündliche') || pt.includes('einwohner')) return 'anfrage';
@@ -650,7 +650,7 @@ function cardHTML(item, matches) {
     antrag:   ['tag-antrag',   'Antrag'],
     petition: ['tag-petition', 'Petition'],
     anfrage:  ['tag-anfrage',  'Anfrage'],
-    top:      ['tag-top',      'TO-Punkt'],
+    sitzung:  ['tag-sitzung',  'Sitzung'],
   };
   const [tagClass, tagLabel] = tagMap[cat] || ['tag-vorlage','?'];
 
@@ -666,7 +666,7 @@ function cardHTML(item, matches) {
   const context  = item.sn ? escHtml(item.sn) : '';
   const href     = item.u || '#';
 
-  const refLabel = item.r ? escHtml(item.r) : (item.t === 'a' ? `TOP·${escHtml(item.id)}` : '—');
+  const refLabel = item.r ? escHtml(item.r) : '—';
 
   return `<a class="result-card" href="${href}" target="_blank" rel="noopener">
     <div class="card-ref">${refLabel}</div>

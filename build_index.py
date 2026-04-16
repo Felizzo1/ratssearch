@@ -130,34 +130,22 @@ v = add_papers('vorlagen')
 a = add_papers('anfragen')
 progress(4, 6, "Vorlagen/Antra\u0308ge/Anfragen geladen", v + a)
 
-# 5 – Tagesordnungspunkte
-progress(5, 6, "Baue Tagesordnungs-Index ...")
-SKIP = {
-    'verschiedenes','informationen','bekanntgaben','fragestunde','fragerunde',
-    'nichtoeffentlich','oeffentlich','nichtöffentlich','öffentlich',
-    'pause','niederschrift','eroeffnung','schluss','sonstiges',
-    'anfragen','beschluesse','beschlüsse',
-}
-ai_count = 0
-for f in os.listdir(f'{REPO_PATH}/agendaitems'):
-    d = load_json(f'{REPO_PATH}/agendaitems/{f}')
-    if not d: continue
-    name = (d.get('name', '') or '').strip()
-    if len(name) < 10: continue
-    if any(s in name.lower() for s in SKIP): continue
-    mid_url = d.get('meeting', '')
-    m = meetings.get(mid_url, {})
+# 5 – Sitzungen (komplette Tagesordnungen)
+progress(5, 6, "Baue Sitzungsindex ...")
+sit_count = 0
+for url, m in meetings.items():
+    if not m.get('date') or not m.get('name'):
+        continue
     records.append({
-        't':  'a',
-        'id': oparl_id(d['id']),
-        'n':  name,
-        'd':  m.get('date', ''),
-        'g':  [m.get('gremium', '')] if m.get('gremium') else [],
-        'u':  m.get('url', ''),
-        'sn': m.get('name', ''),
+        't': 'm',
+        'id': m['id'],
+        'n':  m['name'],
+        'd':  m['date'],
+        'g':  [m['gremium']] if m.get('gremium') else [],
+        'u':  m['url'],
     })
-    ai_count += 1
-progress(5, 6, "Tagesordnungspunkte geladen", ai_count)
+    sit_count += 1
+progress(5, 6, "Sitzungen geladen", sit_count)
 
 # 6 – Schreiben
 progress(6, 6, f"Schreibe Index ({len(records):,} Eintra\u0308ge) ...")
