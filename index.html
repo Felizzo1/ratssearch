@@ -455,9 +455,8 @@
 
     <div id="resultsList">
       <div class="state-message">
-        <strong>⌕</strong>
-        Suchbegriff eingeben, um Dresdner Ratsdokumente zu durchsuchen.<br><br>
-        <span style="font-size:11px">58.820 Einträge · Vorlagen · Anträge · Anfragen · Tagesordnungspunkte · 2009–2026</span>
+        <strong>⏳</strong>
+        Index wird geladen …
       </div>
     </div>
 
@@ -519,8 +518,13 @@ async function boot() {
     });
     buildYearSelect();
     buildGremiumSelect();
-    buildFacets([]);
-    updateStatus(`${allData.length.toLocaleString('de')} Einträge geladen`);
+    const allWrapped = allData.map(item => ({item, matches: [], score: 1}));
+    buildFacets(allWrapped);
+    results = allWrapped;
+    renderResults(allWrapped.slice(0, CONFIG.PAGE_SIZE));
+    page = 1;
+    document.getElementById('loadMore').style.display =
+      allData.length > CONFIG.PAGE_SIZE ? 'inline-block' : 'none';
     document.getElementById('resultsCount').textContent = allData.length.toLocaleString('de');
     document.getElementById('resultsLabel').textContent = 'Einträge gesamt';
   } catch(e) {
@@ -555,9 +559,13 @@ document.getElementById('clearBtn').addEventListener('click', () => {
 function runSearch(q) {
   page = 0;
   if (!q) {
-    results = [];
-    renderResults([]);
-    buildFacets([]);
+    const allWrapped = allData.map(item => ({item, matches: [], score: 1}));
+    results = allWrapped;
+    renderResults(allWrapped.slice(0, CONFIG.PAGE_SIZE));
+    buildFacets(allWrapped);
+    page = 1;
+    document.getElementById('loadMore').style.display =
+      allData.length > CONFIG.PAGE_SIZE ? 'inline-block' : 'none';
     document.getElementById('resultsCount').textContent = allData.length.toLocaleString('de');
     document.getElementById('resultsLabel').textContent = 'Einträge gesamt';
     document.getElementById('aiAnswer').style.display = 'none';
