@@ -9,7 +9,7 @@ Lokal ausführen (nach manuellem Clone des Repos nach /tmp/dresden-ratsinfo):
   python3 build_index.py
 """
 
-import json, os, gzip, shutil
+import json, os, gzip, shutil, subprocess
 from datetime import datetime
 
 # Pfade: lokal oder in GitHub Actions
@@ -18,6 +18,11 @@ if not os.path.isdir(REPO_PATH):
     REPO_PATH = os.path.normpath(
         os.path.join(os.path.dirname(__file__), '..', 'dresden-ratsinfo')
     )
+
+# OCR-Overlay: files/{id}.txt aus ratssearch-ocr, wenn Mirror-Datei leer ist
+OCR_REPO_URL = 'https://github.com/Felizzo1/ratssearch-ocr.git'
+OCR_REPO_PATH = os.environ.get('OCR_REPO', '/tmp/ratssearch-ocr')
+EMPTY_THRESHOLD = 50  # Bytes; unter diesem Wert gilt eine .txt als leer
 
 OUT_DIR  = os.path.join(os.path.dirname(__file__), 'public')
 OUT_FILE = os.path.join(OUT_DIR, 'search-index.json')
@@ -40,6 +45,48 @@ def load_json(path):
     except Exception:
         return None
 
+def clone_or_update_ocr_repo():
+    """Klont das OCR-Overlay-Repo oder aktualisiert es (shallow)."""
+    if os.path.isdir(os.path.join(OCR_REPO_PATH, '.git')):
+        subprocess.run(
+            ['git', '-C', OCR_REPO_PATH, 'fetch', '--depth=1', 'origin', 'main'],
+            check=True, capture_output=True,
+        )
+        subprocess.run(
+            ['git', '-C', OCR_REPO_PATH, 'reset', '--hard', 'origin/main'],
+            check=True, capture_output=True,
+        )
+    else:
+        subprocess.run(
+            ['git', 'clone', '--depth=1', OCR_REPO_URL, OCR_REPO_PATH],
+            check=True, capture_output=True,
+        )
+
+def read_fulltext(file_id):
+    """
+    Liest den Volltext für eine Datei-ID.
+    Bevorzugt OCR-Repo wenn Mirror-Datei leer (<EMPTY_THRESHOLD Bytes).
+    """
+    mirror_txt = os.path.join(REPO_PATH, 'files', f'{file_id}.txt')
+    mirror_size = os.path.getsize(mirror_txt) if os.path.isfile(mirror_txt) else 0
+
+    if mirror_size >= EMPTY_THRESHOLD:
+        try:
+            with open(mirror_txt, encoding='utf-8', errors='replace') as f:
+                return f.read()
+        except Exception:
+            return ''
+
+    # Mirror-Datei leer: OCR-Overlay versuchen
+    ocr_txt = os.path.join(OCR_REPO_PATH, 'files', f'{file_id}.txt')
+    if os.path.isfile(ocr_txt) and os.path.getsize(ocr_txt) >= EMPTY_THRESHOLD:
+        try:
+            with open(ocr_txt, encoding='utf-8', errors='replace') as f:
+                return f.read()
+        except Exception:
+            pass
+    return ''
+
 def progress(step, total_steps, label, count=None):
     cnt = f" ({count:,})" if count is not None else ""
     print(f"[{step}/{total_steps}] {label}{cnt}", flush=True)
@@ -49,6 +96,14 @@ print(f"RATSSEARCH/DD – Index Build")
 print(f"Zeitstempel: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
 print(f"Quelle: {REPO_PATH}")
 print(f"{'='*50}\n")
+
+# 0 – OCR-Overlay-Repo holen
+try:
+    print("Klone/Aktualisiere OCR-Overlay-Repo ...", flush=True)
+    clone_or_update_ocr_repo()
+    print("  OCR-Repo bereit.", flush=True)
+except Exception as e:
+    print(f"  WARNUNG: OCR-Repo nicht verfügbar ({e}). Fahre ohne Overlay fort.", flush=True)
 
 # 1 – Gremien
 progress(1, 6, "Lade Gremien ...")
@@ -112,7 +167,8 @@ def add_papers(directory):
         paper_url = d['id']
         conns     = sorted(paper_meetings.get(paper_url, []), key=lambda x: x['date'])
         glist     = list(dict.fromkeys(c['gremium'] for c in conns if c['gremium']))
-        records.append({
+        fulltext  = read_fulltext(nid) if nid else ''
+        rec = {
             't':  'p',
             'id': nid,
             'r':  d.get('reference', ''),
@@ -122,7 +178,10 @@ def add_papers(directory):
             'g':  glist[:3],
             'c':  conns[:5],
             'u':  ratsinfo_url('paper', nid),
-        })
+        }
+        if fulltext:
+            rec['tx'] = fulltext[:50000]  # cap bei 50 kB pro Dokument
+        records.append(rec)
         count += 1
     return count
 

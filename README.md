@@ -108,3 +108,6 @@ ratssearch/
 
 [offenesdresden/dresden-ratsinfo](https://github.com/offenesdresden/dresden-ratsinfo) —
 täglicher Spiegel der offiziellen OParl-Schnittstelle der Landeshauptstadt Dresden (`oparl.dresden.de`).
+
+Für eingescannte PDFs ohne eingebettete Textschicht (ca. 7 % der Dokumente) fließt OCR-Text aus
+[Felizzo1/ratssearch-ocr](https://github.com/Felizzo1/ratssearch-ocr) ein.
